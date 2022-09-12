@@ -10,8 +10,11 @@
   "license": "ISC",
   "compilerOptions": {
     "lib": [
-      "es5", "es6", "dom", "dom.iterable"
-  ]
+      "es5",
+      "es6",
+      "dom",
+      "dom.iterable"
+    ]
   },
   "dependencies": {
     "@types/socket.io": "^3.0.2",

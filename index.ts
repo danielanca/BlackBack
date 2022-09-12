@@ -35,19 +35,38 @@ const io = new Server(server, {
     
     console.log(`[STATE-Only Connection] ${socket.id}`);
     socket.on("joinRoom", (data:any)=>{
+      
      
       let {roomChannel, nickName} : {roomChannel: string, nickName:string} = data;
+      socket.join(roomChannel);
       playersOnline.push({socketId: socket.id, nickName: data.nickName, roomChannel: data.roomChannel});
 
+      // If there is property then it means that channel already exist and also is not empty
       if(RoomChannels.hasOwnProperty(roomChannel)){
-
         RoomChannels[roomChannel].players.push({socketID: socket.id, nickName: nickName, cards: []});
+        
+        if(!RoomChannels[roomChannel].hasOwnProperty('cardsOnDeck')){
+          RoomChannels[roomChannel].cardsOnDeck = shuffleCards(cards);
 
+          // Deal cards to players
+          if(RoomChannels[roomChannel].players.length === 2 && RoomChannels[roomChannel].cardsOnDeck !== undefined){
+            RoomChannels[roomChannel].players.forEach((player:any)=>{
+              player.cards.push(RoomChannels[roomChannel].cardsOnDeck?.pop());
+              player.cards.push(RoomChannels[roomChannel].cardsOnDeck?.pop());
+            })
+          }
+         
+
+           socket.broadcast.emit('playerCards', {payload:JSON.stringify(RoomChannels[roomChannel].players)});
+           socket.emit('playerCards', {payload: JSON.stringify(RoomChannels[roomChannel].players)});
+           socket.to(roomChannel).emit('playerCards', {payload: JSON.stringify(RoomChannels[roomChannel].players)});
+        }
+        //givePlayersCards
+        
     }else{
           RoomChannels =  { ...RoomChannels, [roomChannel]: {
-         
           players: [ {socketID: socket.id, nickName, cards: []}]
-      } }; 
+      }   }; 
     }
 
   
@@ -62,8 +81,26 @@ const io = new Server(server, {
      
 
       console.log("INFO RoomChannels on /info", JSON.stringify(RoomChannels) );
-    console.log("INFO playersOnline on /info", playersOnline);
+      console.log("INFO playersOnline on /info", playersOnline);
       // console.log(`howManyPlayers triggered by [${socket.id}] `, playersOnline);
+    })
+
+    socket.on('EVENT_ACTION', (data:any)=> {
+      console.log("EVENT_ACTION triggered by [", socket.id, "] ", data);
+      let {nickName, roomChannel, actionEvent} = JSON.parse(data);
+
+      if(actionEvent === 'HIT' && RoomChannels[roomChannel].players.length ===2){
+       
+        RoomChannels[roomChannel].players.forEach((player:any)=>{
+          if(player.nickName === nickName){
+            player.cards.push(RoomChannels[roomChannel].cardsOnDeck?.pop());
+          }
+        })
+           console.log(`Event ${actionEvent} from ${nickName} and player has cards:${RoomChannels[roomChannel].players}`);
+           socket.broadcast.emit('playerCards', {payload:JSON.stringify(RoomChannels[roomChannel].players)});
+           socket.emit('playerCards', {payload: JSON.stringify(RoomChannels[roomChannel].players)});
+           socket.to(roomChannel).emit('playerCards', {payload: JSON.stringify(RoomChannels[roomChannel].players)});
+      }
     })
    
 
