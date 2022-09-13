@@ -1,4 +1,4 @@
-import { onlinePlayerProps, newTableProps, CardObject} from "./cardManager/types/types";
+import { onlinePlayerProps, newTableProps, PlayerProps, CardObject} from "./cardManager/types/types";
 const express = require("express");
 const app = express();
 const bodyParser = require("body-parser");
@@ -10,7 +10,7 @@ const {getAllCards, shuffleCards, computeCardsValue} = require('./cardManager/ca
 
 
 
-const portNumber = 9001;
+const portNumber = 8999;
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -43,7 +43,7 @@ const io = new Server(server, {
 
       // If there is property then it means that channel already exist and also is not empty
       if(RoomChannels.hasOwnProperty(roomChannel)){
-        RoomChannels[roomChannel].players.push({socketID: socket.id, nickName: nickName, cards: []});
+        RoomChannels[roomChannel].players.push({socketID: socket.id, nickName: nickName, cards: [], dealer: 'dealer'});
         
         if(!RoomChannels[roomChannel].hasOwnProperty('cardsOnDeck')){
           RoomChannels[roomChannel].cardsOnDeck = shuffleCards(cards);
@@ -51,22 +51,31 @@ const io = new Server(server, {
           // Deal cards to players
           if(RoomChannels[roomChannel].players.length === 2 && RoomChannels[roomChannel].cardsOnDeck !== undefined){
             RoomChannels[roomChannel].players.forEach((player:any)=>{
-              player.cards.push(RoomChannels[roomChannel].cardsOnDeck?.pop());
-              player.cards.push(RoomChannels[roomChannel].cardsOnDeck?.pop());
+              player.cards?.push(RoomChannels[roomChannel].cardsOnDeck?.pop());
+              if(player.dealer === 'dealer'){
+                player.cards?.push({cardID: 'hidden', cardValue: 0});
+                player.myTurn = 'NO';
+              }else{
+                player.cards?.push(RoomChannels[roomChannel].cardsOnDeck?.pop());
+                player.myTurn = "YES";
+              }
+              
             })
           }
-         
-
-           socket.broadcast.emit('playerCards', {payload:JSON.stringify(RoomChannels[roomChannel].players)});
-           socket.emit('playerCards', {payload: JSON.stringify(RoomChannels[roomChannel].players)});
-           socket.to(roomChannel).emit('playerCards', {payload: JSON.stringify(RoomChannels[roomChannel].players)});
+          setTimeout( ()=>{
+            socket.broadcast.emit('playerCards', {payload:JSON.stringify(RoomChannels[roomChannel].players)});
+            socket.emit('playerCards', {payload: JSON.stringify(RoomChannels[roomChannel].players)});
+            socket.to(roomChannel).emit('playerCards', {payload: JSON.stringify(RoomChannels[roomChannel].players)});
+          }, 2000);
+          // socket.broadcast.emit('playerCards', {payload:JSON.stringify(RoomChannels[roomChannel].players)});
+          
         }
         //givePlayersCards
         
     }else{
           RoomChannels =  { ...RoomChannels, [roomChannel]: {
-          players: [ {socketID: socket.id, nickName, cards: []}]
-      }   }; 
+          players: [ {socketID: socket.id, nickName, cards: [], dealer: 'no'}]
+      }}; 
     }
 
   
@@ -82,7 +91,7 @@ const io = new Server(server, {
 
       console.log("INFO RoomChannels on /info", JSON.stringify(RoomChannels) );
       console.log("INFO playersOnline on /info", playersOnline);
-      // console.log(`howManyPlayers triggered by [${socket.id}] `, playersOnline);
+      
     })
 
     socket.on('EVENT_ACTION', (data:any)=> {
@@ -93,14 +102,59 @@ const io = new Server(server, {
        
         RoomChannels[roomChannel].players.forEach((player:any)=>{
           if(player.nickName === nickName){
-            player.cards.push(RoomChannels[roomChannel].cardsOnDeck?.pop());
+
+            console.log(`${nickName} is hitting and ${JSON.stringify(player.cards?.find( (card: CardObject) => (card.cardID === 'hidden')))}`);
+          if( player.cards?.find( (card: CardObject) => (card.cardID === 'hidden')) !=  undefined){
+            player.cards?.forEach( (item:CardObject) => {
+              console.log("Avem si cardul generat????????????gh:", item.cardID)
+              if(item.cardID === 'hidden'){
+                let card = RoomChannels[roomChannel].cardsOnDeck?.pop();
+                if( typeof card != 'undefined'){
+                let {cardID, cardValue } = card;
+                item.cardID = cardID;
+                item.cardValue = cardValue;
+                  console.log("Avem si cardul generat:", card);
+                return item;
+              }
+            }
+            
+          });
+            
+            console.log(`FINISH ${nickName} is ${JSON.stringify(player.cards)}`)
+          } else{
+            player.cards?.push(RoomChannels[roomChannel].cardsOnDeck?.pop());
           }
+
+          }
+         var cardTotal = 0;
+         player.cards?.forEach((card:CardObject)=>{
+          cardTotal += card.cardValue;
+         })
+         console.log(`TOTAL IS ${player.nickName}  ${cardTotal}  `);
+          
         })
            console.log(`Event ${actionEvent} from ${nickName} and player has cards:${RoomChannels[roomChannel].players}`);
            socket.broadcast.emit('playerCards', {payload:JSON.stringify(RoomChannels[roomChannel].players)});
            socket.emit('playerCards', {payload: JSON.stringify(RoomChannels[roomChannel].players)});
            socket.to(roomChannel).emit('playerCards', {payload: JSON.stringify(RoomChannels[roomChannel].players)});
       }
+      if(actionEvent === 'STAY' && RoomChannels[roomChannel].players.length ===2){
+
+        RoomChannels[roomChannel].players.forEach((player:any)=>{
+          if(player.nickName === nickName){
+            player.myTurn = 'NO';
+          }else{
+            player.myTurn = 'YES';
+          }
+        });
+
+        console.log(`Event ${actionEvent} from ${nickName}`);
+        socket.broadcast.emit('playerCards', {payload:JSON.stringify(RoomChannels[roomChannel].players)});
+        socket.emit('playerCards', {payload: JSON.stringify(RoomChannels[roomChannel].players)});
+        socket.to(roomChannel).emit('playerCards', {payload: JSON.stringify(RoomChannels[roomChannel].players)});
+      }
+       
+      
     })
    
 
