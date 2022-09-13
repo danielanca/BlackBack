@@ -19,12 +19,13 @@ export type TableProps = {
 export type PlayerProps = {
     socketID: string;
     nickName: string;
-    cards: CardObject[];
+    cards?: CardObject[];
+    dealer?: string;
+    myTurn?: string;
 }
 export type newTableProps = {
     [key:string] : {
-        cardsOnDeck?: CardObject[] ;
-        dealer?: CardObject[] ;
+        cardsOnDeck?:  undefined | CardObject[];
         players: PlayerProps[];
         hiddenHostCard?: CardObject[];
     }
