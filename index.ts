@@ -145,7 +145,6 @@ io.on('connection', (socket: any) => {
                            let { cardID, cardValue } = card;
                            item.cardID = cardID;
                            item.cardValue = cardValue;
-
                            return item;
                         }
                      }
@@ -198,15 +197,18 @@ io.on('connection', (socket: any) => {
             RoomChannels[roomChannel].players[0].myTurn === 'NO_MORE' &&
             RoomChannels[roomChannel].players[1].myTurn === 'NO_MORE'
          ) {
-            socket.broadcast.emit('GAME_FINISHED', {
-               payload: JSON.stringify({
-                  winner: whosNearest21(RoomChannels[roomChannel].players),
-               }),
-            });
-
-            console.log('WINNER:', whosNearest21(RoomChannels[roomChannel].players));
+            setTimeout(() => {
+               socket.broadcast.emit('GAME_FINISHED', {
+                  payload: whosNearest21(RoomChannels[roomChannel].players),
+               });
+               socket.emit('GAME_FINISHED', {
+                  payload: whosNearest21(RoomChannels[roomChannel].players),
+               });
+               //  socket.to(roomChannel).emit('GAME_FINISHED', {
+               //     payload: whosNearest21(RoomChannels[roomChannel].players),
+               //  });
+            }, 2000);
          }
-         //compute players totalCards because they both have NO_MORE tag.
          console.log(`Event ${actionEvent} from ${nickName}`);
          socket.broadcast.emit('playerCards', {
             payload: JSON.stringify(RoomChannels[roomChannel].players),
@@ -272,20 +274,20 @@ const whosNearest21 = (players: PlayerProps[]) => {
       typeof playerTwo.cardsTotal != 'undefined'
    ) {
       if (playerOne.cardsTotal > 21 && playerTwo.cardsTotal > 21) {
-         return { message: 'DRAW', winnerData: [playerOne] };
+         return { message: 'DRAW', players: [playerOne] };
       }
       if (playerOne.cardsTotal > 21) {
-         return { message: 'WINNER', winnerData: [playerTwo] };
+         return { message: 'WINNER', players: [playerTwo] };
       }
       if (playerTwo.cardsTotal > 21) {
-         return { message: 'WINNER', winnerData: [playerOne] };
+         return { message: 'WINNER', players: [playerOne] };
       }
       if (playerOne.cardsTotal > playerTwo.cardsTotal) {
-         return { message: 'WINNER', winnerData: [playerOne] };
+         return { message: 'WINNER', players: [playerOne] };
       }
 
       if (playerOne.cardsTotal < playerTwo.cardsTotal) {
-         return { message: 'WINNER', winnerData: [playerTwo] };
+         return { message: 'WINNER', players: [playerTwo] };
       }
       if (playerOne.cardsTotal === playerTwo.cardsTotal) {
          return { message: 'DRAW', players: [playerOne.nickName, playerTwo.nickName] };
