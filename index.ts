@@ -274,7 +274,7 @@ const whosNearest21 = (players: PlayerProps[]) => {
       typeof playerTwo.cardsTotal != 'undefined'
    ) {
       if (playerOne.cardsTotal > 21 && playerTwo.cardsTotal > 21) {
-         return { message: 'DRAW', players: [playerOne] };
+         return { message: 'DRAW', players: [...[playerOne], ...[playerTwo]] };
       }
       if (playerOne.cardsTotal > 21) {
          return { message: 'WINNER', players: [playerTwo] };
@@ -290,7 +290,10 @@ const whosNearest21 = (players: PlayerProps[]) => {
          return { message: 'WINNER', players: [playerTwo] };
       }
       if (playerOne.cardsTotal === playerTwo.cardsTotal) {
-         return { message: 'DRAW', players: [playerOne.nickName, playerTwo.nickName] };
+         return {
+            message: 'DRAW',
+            players: [...[playerOne], ...[playerTwo]],
+         };
       }
    } else return { message: 'ERROR', error: 'Players have no cards' };
 };
