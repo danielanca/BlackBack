@@ -125,6 +125,7 @@ io.on('connection', (socket: any) => {
     let { nickName: currentNickName, roomChannel, actionEvent } = JSON.parse(data);
 
     if (actionEvent === 'HIT' && RoomChannels[roomChannel].players.length === 2) {
+      //1
       RoomChannels[roomChannel].players.forEach((player: any, index: number) => {
         if (player.nickName === currentNickName) {
           console.log(
@@ -132,7 +133,7 @@ io.on('connection', (socket: any) => {
               player.cards?.find((card: CardObject) => card.cardID === 'hidden')
             )}`
           );
-
+          //CHECK IF PLAYER HAS THE HIDDEN CARD
           if (player.cards?.find((card: CardObject) => card.cardID === 'hidden') != undefined) {
             player.cards?.forEach((item: CardObject) => {
               if (item.cardID === 'hidden') {
@@ -145,54 +146,85 @@ io.on('connection', (socket: any) => {
                 }
               }
             });
-
-            console.log(`FINISH ${currentNickName} is ${JSON.stringify(player.cards)}`);
           } else {
+            //POP a card from DECK and add it to the player
             player.cards?.push(RoomChannels[roomChannel].cardsOnDeck?.pop());
           }
+          //ONLY THE HITTER IS CHECKED
+          //for EACH player, compute the CardTOTAL here
+          var cardTotal = 0;
+          player.cards?.forEach((card: CardObject) => {
+            cardTotal += card.cardValue;
+          });
+          player.cardsTotal = cardTotal;
+          //2
+          if (player.cardsTotal > 21) {
+            if (player.dealer != 'dealer') {
+              if (player.myTurn === 'YES') {
+                player.myTurn = 'NO_EXCEEDED';
+                RoomChannels[roomChannel].players.forEach((theOtherPlayer) =>
+                  theOtherPlayer.nickName !== currentNickName
+                    ? (theOtherPlayer.myTurn = 'YES')
+                    : null
+                );
+              }
+            } else if (player.dealer === 'dealer') {
+              if (player.myTurn === 'YES') {
+                player.myTurn = 'NO_MORE';
+                RoomChannels[roomChannel].players.forEach((theOtherPlayer) =>
+                  theOtherPlayer.nickName !== currentNickName
+                    ? (theOtherPlayer.myTurn = 'NO_MORE')
+                    : null
+                );
+              }
+            }
+          }
         }
-        var cardTotal = 0;
-        player.cards?.forEach((card: CardObject) => {
-          cardTotal += card.cardValue;
-        });
-        player.cardsTotal = cardTotal;
-
         console.log(`Computing: ${computePlayerCards(player.cards)} of ${player.nickName}`);
-        if (computePlayerCards(player.cards) >= 21) {
-          whosTurnIsHandler(RoomChannels[roomChannel].players, currentNickName);
-          console.log(` ${currentNickName} is busted`);
+      });
+      // whosTurnIsHandler(RoomChannels[roomChannel].players, currentNickName);
+    } else if (actionEvent === 'STAY' && RoomChannels[roomChannel].players.length === 2) {
+      RoomChannels[roomChannel].players.forEach((player: any, index: number) => {
+        if (player.nickName === currentNickName) {
+          if (player.dealer != 'dealer') {
+            player.myTurn = 'NO_MORE';
+            RoomChannels[roomChannel].players.forEach((player: PlayerProps) =>
+              player.nickName !== currentNickName ? (player.myTurn = 'YES') : null
+            );
+          } else {
+            if (player.myTurn === 'YES') {
+              player.myTurn = 'NO_MORE';
+              RoomChannels[roomChannel].players.forEach(
+                (theOtherPlayer) => (theOtherPlayer.myTurn = 'NO_MORE')
+              );
+            }
+          }
+
+          var cardTotal = 0;
+          player.cards?.forEach((card: CardObject) => {
+            cardTotal += card.cardValue;
+          });
+          player.cardsTotal = cardTotal;
         }
       });
-
-      console.log(
-        `Event ${actionEvent} from ${currentNickName} and player has cards:${RoomChannels[roomChannel].players}`
-      );
-      socket.broadcast.emit('playerCards', {
-        payload: JSON.stringify(RoomChannels[roomChannel].players),
-      });
-      socket.emit('playerCards', {
-        payload: JSON.stringify(RoomChannels[roomChannel].players),
-      });
-      socket.to(roomChannel).emit('playerCards', {
-        payload: JSON.stringify(RoomChannels[roomChannel].players),
-      });
+      // whosTurnIsHandler(RoomChannels[roomChannel].players, currentNickName);
     }
-    if (actionEvent === 'STAY' && RoomChannels[roomChannel].players.length === 2) {
-      whosTurnIsHandler(RoomChannels[roomChannel].players, currentNickName);
-
-      checkisThereAWinner(RoomChannels[roomChannel].players, socket);
-
-      console.log(`Event ${actionEvent} from ${currentNickName}`);
-      socket.broadcast.emit('playerCards', {
-        payload: JSON.stringify(RoomChannels[roomChannel].players),
-      });
-      socket.emit('playerCards', {
-        payload: JSON.stringify(RoomChannels[roomChannel].players),
-      });
-      socket.to(roomChannel).emit('playerCards', {
-        payload: JSON.stringify(RoomChannels[roomChannel].players),
-      });
-    }
+    console.log(
+      `SENDING BOTH PLAYERS STATS: ${RoomChannels[roomChannel].players[0].myTurn}  ${RoomChannels[roomChannel].players[1].myTurn} `
+    );
+    checkisThereAWinner(RoomChannels[roomChannel].players, socket);
+    console.log(
+      `Event ${actionEvent} from ${currentNickName} and player has cards:${RoomChannels[roomChannel].players}`
+    );
+    socket.broadcast.emit('playerCards', {
+      payload: JSON.stringify(RoomChannels[roomChannel].players),
+    });
+    socket.emit('playerCards', {
+      payload: JSON.stringify(RoomChannels[roomChannel].players),
+    });
+    socket.to(roomChannel).emit('playerCards', {
+      payload: JSON.stringify(RoomChannels[roomChannel].players),
+    });
 
     //compute if one of the players card are exceeding 21 and if so, send a message to the other player that he won
     //or is having 21 card.
@@ -275,18 +307,27 @@ const whosNearest21 = (players: PlayerProps[]) => {
 const whosTurnIsHandler = (players: PlayerProps[], currentNickname: string) => {
   players.forEach((player: any) => {
     if (player.nickName === currentNickname) {
-      if (player.myTurn === 'YES' && player.dealer === 'dealer') {
-        player.myTurn = 'NO_MORE';
-      } else if (player.myTurn === 'YES' && player.dealer != 'dealer') {
-        player.myTurn = 'NO';
-      } else {
-        player.myTurn = 'NO';
+      if (player.myTurn === 'YES' && player.dealer !== 'dealer') {
+        console.log(` ${player.nickName}[Guest] is hitting!`);
       }
-    } else {
-      if (player.myTurn === 'NO' && player.dealer !== 'dealer') {
-        player.myTurn = 'NO_MORE';
-      } else player.myTurn = 'YES';
+      if (player.myTurn === 'NO_EXCEEDED' && player.dealer !== 'dealer') {
+        //the opponent
+        players.forEach((player) =>
+          player.nickName !== currentNickname ? (player.myTurn = 'YES') : null
+        );
+      }
     }
+    // if (player.nickName === currentNickname) {
+    //   if (player.myTurn === 'YES' && player.dealer === 'dealer') {
+    //     player.myTurn = 'NO_MORE';
+    //   } else {
+    //     player.myTurn = 'NO';
+    //   }
+    // } else {
+    //   if (player.myTurn === 'NO' && player.dealer !== 'dealer') {
+    //     player.myTurn = 'NO_MORE';
+    //   } else player.myTurn = 'YES';
+    // }
   });
 };
 server.listen(portNumber, () => {
