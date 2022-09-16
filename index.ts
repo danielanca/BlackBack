@@ -31,6 +31,13 @@ const io = new Server(server, {
   cors: {
     origin: 'https://blackjackanca.herokuapp.com/',
     methods: ['GET', 'POST'],
+    allowedHeaders: [
+      {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Credentials': true,
+      },
+    ],
   },
 });
 
