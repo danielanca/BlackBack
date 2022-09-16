@@ -1,1 +1,1 @@
-web: node index.ts
+web: nodemon index.ts
