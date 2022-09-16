@@ -5,12 +5,12 @@ const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 
-const {
+import {
   onlinePlayerProps,
   newTableProps,
   PlayerProps,
   CardObject,
-} = require('./cardManager/types/types');
+} from './cardManager/types/types';
 const {
   getAllCards,
   shuffleCards,
@@ -24,8 +24,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 const server = http.createServer(app);
 const cards = getAllCards;
-var playersOnline: typeof onlinePlayerProps[] = [];
-var RoomChannels: typeof newTableProps = {};
+var playersOnline: onlinePlayerProps[] = [];
+var RoomChannels: newTableProps = {};
 
 const io = new Server(server, {
   cors: {
@@ -131,15 +131,12 @@ io.on('connection', (socket: any) => {
         if (player.nickName === currentNickName) {
           console.log(
             `${currentNickName} is hitting and ${JSON.stringify(
-              player.cards?.find((card: typeof CardObject) => card.cardID === 'hidden')
+              player.cards?.find((card: CardObject) => card.cardID === 'hidden')
             )}`
           );
           //CHECK IF PLAYER HAS THE HIDDEN CARD
-          if (
-            player.cards?.find((card: typeof CardObject) => card.cardID === 'hidden') !=
-            undefined
-          ) {
-            player.cards?.forEach((item: typeof CardObject) => {
+          if (player.cards?.find((card: CardObject) => card.cardID === 'hidden') != undefined) {
+            player.cards?.forEach((item: CardObject) => {
               if (item.cardID === 'hidden') {
                 let card = RoomChannels[roomChannel].cardsOnDeck?.pop();
                 if (typeof card != 'undefined') {
@@ -157,7 +154,7 @@ io.on('connection', (socket: any) => {
           //ONLY THE HITTER IS CHECKED
           //for EACH player, compute the CardTOTAL here
           var cardTotal = 0;
-          player.cards?.forEach((card: typeof CardObject) => {
+          player.cards?.forEach((card: CardObject) => {
             cardTotal += card.cardValue;
           });
           player.cardsTotal = cardTotal;
@@ -192,7 +189,7 @@ io.on('connection', (socket: any) => {
         if (player.nickName === currentNickName) {
           if (player.dealer != 'dealer') {
             player.myTurn = 'NO_MORE';
-            RoomChannels[roomChannel].players.forEach((player: typeof PlayerProps) =>
+            RoomChannels[roomChannel].players.forEach((player: PlayerProps) =>
               player.nickName !== currentNickName ? (player.myTurn = 'YES') : null
             );
           } else {
@@ -205,7 +202,7 @@ io.on('connection', (socket: any) => {
           }
 
           var cardTotal = 0;
-          player.cards?.forEach((card: typeof CardObject) => {
+          player.cards?.forEach((card: CardObject) => {
             cardTotal += card.cardValue;
           });
           player.cardsTotal = cardTotal;
@@ -238,7 +235,7 @@ io.on('connection', (socket: any) => {
     console.log('User disconnected: ', socket.id);
     var userLeaving = playersOnline.find((player) => player.socketId === socket.id);
     playersOnline = playersOnline.filter(
-      (player: typeof onlinePlayerProps) => player.socketId !== socket.id
+      (player: onlinePlayerProps) => player.socketId !== socket.id
     );
 
     if (userLeaving !== undefined) {
@@ -264,7 +261,7 @@ app.get('/info', (req: any, res: any) => {
   console.log('INFO RoomChannels on /info', RoomChannels);
   console.log('INFO playersOnline on /info', playersOnline);
 });
-const checkisThereAWinner = (RoomChannelObject: typeof PlayerProps[], socket: any) => {
+const checkisThereAWinner = (RoomChannelObject: PlayerProps[], socket: any) => {
   if (RoomChannelObject[0].myTurn === 'NO_MORE' && RoomChannelObject[1].myTurn === 'NO_MORE') {
     setTimeout(() => {
       socket.broadcast.emit('GAME_FINISHED', {
@@ -276,7 +273,7 @@ const checkisThereAWinner = (RoomChannelObject: typeof PlayerProps[], socket: an
     }, 1500);
   }
 };
-const whosNearest21 = (players: typeof PlayerProps[]) => {
+const whosNearest21 = (players: PlayerProps[]) => {
   let playerOne = players[0];
   let playerTwo = players[1];
   if (
@@ -308,7 +305,7 @@ const whosNearest21 = (players: typeof PlayerProps[]) => {
   } else return { message: 'ERROR', error: 'Players have no cards' };
 };
 
-const whosTurnIsHandler = (players: typeof PlayerProps[], currentNickname: string) => {
+const whosTurnIsHandler = (players: PlayerProps[], currentNickname: string) => {
   players.forEach((player: any) => {
     if (player.nickName === currentNickname) {
       if (player.myTurn === 'YES' && player.dealer !== 'dealer') {
