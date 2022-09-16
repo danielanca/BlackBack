@@ -33,9 +33,10 @@ const io = new Server(server, {
     methods: ['GET', 'POST'],
     allowedHeaders: [
       {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': 'https://blackjackanca.herokuapp.com/',
         'Content-Type': 'application/json',
         'Access-Control-Allow-Credentials': true,
+        'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
       },
     ],
   },
