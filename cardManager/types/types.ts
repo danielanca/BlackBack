@@ -31,3 +31,10 @@ export interface newTableProps {
     hiddenHostCard?: CardObject[];
   };
 }
+export interface CardsPlayer {
+  socketID: string;
+  nickName: string;
+  cards: CardObject[];
+  dealer?: string;
+  myTurn?: string;
+}

@@ -5,17 +5,8 @@ const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 
-import {
-  onlinePlayerProps,
-  newTableProps,
-  PlayerProps,
-  CardObject,
-} from './cardManager/types/types';
-const {
-  getAllCards,
-  shuffleCards,
-  computePlayerCards,
-} = require('./cardManager/cardsManager.ts');
+import { onlinePlayerProps, newTableProps, PlayerProps, CardObject } from './cardManager/types/types';
+const { getAllCards, shuffleCards, computePlayerCards } = require('./cardManager/cardsManager.ts');
 
 const portNumber = 8999;
 app.use(cors());
@@ -26,14 +17,15 @@ const server = http.createServer(app);
 const cards = getAllCards;
 var playersOnline: onlinePlayerProps[] = [];
 var RoomChannels: newTableProps = {};
-
+const localHost = 'http://localhost:3000';
+// const localHost = 'https://blackjackanca.herokuapp.com/';
 const io = new Server(server, {
   cors: {
-    origin: 'https://blackjackanca.herokuapp.com/',
+    origin: localHost,
     methods: ['GET', 'POST'],
     allowedHeaders: [
       {
-        'Access-Control-Allow-Origin': 'https://blackjackanca.herokuapp.com/',
+        'Access-Control-Allow-Origin': localHost,
         'Content-Type': 'application/json',
         'Access-Control-Allow-Credentials': true,
         'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
@@ -44,6 +36,52 @@ const io = new Server(server, {
 
 io.on('connection', (socket: any) => {
   console.log(`[STATE-Only Connection] ${socket.id}`);
+
+  socket.on('restartGame', (data: any) => {
+    const { requestNickname: requestNickName, requestChannel: roomChannel } = data;
+    console.log(`[RESTART GAME] ${JSON.stringify(roomChannel)}`);
+    RoomChannels[roomChannel].players.forEach((player: PlayerProps) => {
+      player.cards = [];
+      player.cardsTotal = 0;
+      if (player.nickName !== requestNickName) {
+        player.myTurn = 'YES';
+        player.dealer = 'dealer';
+      } else {
+        player.dealer = 'no';
+        player.myTurn = 'NO';
+      }
+    });
+
+    RoomChannels[roomChannel].cardsOnDeck = shuffleCards(cards);
+
+    if (RoomChannels[roomChannel].players.length === 2) {
+      RoomChannels[roomChannel].players.forEach((player: any) => {
+        player.cards?.push(RoomChannels[roomChannel].cardsOnDeck?.pop());
+        if (player.dealer === 'dealer') {
+          player.cards?.push({ cardID: 'hidden', cardValue: 0 });
+          player.myTurn = 'NO';
+        } else {
+          player.cards?.push(RoomChannels[roomChannel].cardsOnDeck?.pop());
+          player.myTurn = 'YES';
+        }
+      });
+    }
+    setTimeout(() => {
+      socket.broadcast.emit('playerCards', {
+        payload: JSON.stringify(RoomChannels[roomChannel].players),
+        restart: true,
+      });
+      socket.emit('playerCards', {
+        payload: JSON.stringify(RoomChannels[roomChannel].players),
+        restart: true,
+      });
+      socket.to(roomChannel).emit('playerCards', {
+        payload: JSON.stringify(RoomChannels[roomChannel].players),
+        restart: true,
+      });
+    }, 2000);
+  });
+
   socket.on('joinRoom', (data: any) => {
     let { roomChannel, nickName }: { roomChannel: string; nickName: string } = data;
     socket.join(roomChannel);
@@ -64,12 +102,8 @@ io.on('connection', (socket: any) => {
 
       if (!RoomChannels[roomChannel].hasOwnProperty('cardsOnDeck')) {
         RoomChannels[roomChannel].cardsOnDeck = shuffleCards(cards);
-
         // Deal cards to players
-        if (
-          RoomChannels[roomChannel].players.length === 2 &&
-          RoomChannels[roomChannel].cardsOnDeck !== undefined
-        ) {
+        if (RoomChannels[roomChannel].players.length === 2) {
           RoomChannels[roomChannel].players.forEach((player: any) => {
             player.cards?.push(RoomChannels[roomChannel].cardsOnDeck?.pop());
             if (player.dealer === 'dealer') {
@@ -112,9 +146,7 @@ io.on('connection', (socket: any) => {
       nickName: data.nickName,
       roomChannel: data.roomChannel,
     });
-    console.log(
-      `[STATE- joinRoom]  Socket ID: ${socket.id}, nickName: ${nickName}, roomChannel: ${roomChannel}`
-    );
+    console.log(`[STATE- joinRoom]  Socket ID: ${socket.id}, nickName: ${nickName}, roomChannel: ${roomChannel}`);
   });
 
   socket.on('howManyPlayers', (data: any) => {
@@ -172,18 +204,14 @@ io.on('connection', (socket: any) => {
               if (player.myTurn === 'YES') {
                 player.myTurn = 'NO_EXCEEDED';
                 RoomChannels[roomChannel].players.forEach((theOtherPlayer: any) =>
-                  theOtherPlayer.nickName !== currentNickName
-                    ? (theOtherPlayer.myTurn = 'YES')
-                    : null
+                  theOtherPlayer.nickName !== currentNickName ? (theOtherPlayer.myTurn = 'YES') : null
                 );
               }
             } else if (player.dealer === 'dealer') {
               if (player.myTurn === 'YES') {
                 player.myTurn = 'NO_MORE';
                 RoomChannels[roomChannel].players.forEach((theOtherPlayer: any) =>
-                  theOtherPlayer.nickName !== currentNickName
-                    ? (theOtherPlayer.myTurn = 'NO_MORE')
-                    : null
+                  theOtherPlayer.nickName !== currentNickName ? (theOtherPlayer.myTurn = 'NO_MORE') : null
                 );
               }
             }
@@ -203,9 +231,7 @@ io.on('connection', (socket: any) => {
           } else {
             if (player.myTurn === 'YES') {
               player.myTurn = 'NO_MORE';
-              RoomChannels[roomChannel].players.forEach(
-                (theOtherPlayer: any) => (theOtherPlayer.myTurn = 'NO_MORE')
-              );
+              RoomChannels[roomChannel].players.forEach((theOtherPlayer: any) => (theOtherPlayer.myTurn = 'NO_MORE'));
             }
           }
 
@@ -222,9 +248,7 @@ io.on('connection', (socket: any) => {
       `SENDING BOTH PLAYERS STATS: ${RoomChannels[roomChannel].players[0].myTurn}  ${RoomChannels[roomChannel].players[1].myTurn} `
     );
     checkisThereAWinner(RoomChannels[roomChannel].players, socket);
-    console.log(
-      `Event ${actionEvent} from ${currentNickName} and player has cards:${RoomChannels[roomChannel].players}`
-    );
+    console.log(`Event ${actionEvent} from ${currentNickName} and player has cards:${RoomChannels[roomChannel].players}`);
     socket.broadcast.emit('playerCards', {
       payload: JSON.stringify(RoomChannels[roomChannel].players),
     });
@@ -242,15 +266,13 @@ io.on('connection', (socket: any) => {
   socket.on('disconnect', (data: any) => {
     console.log('User disconnected: ', socket.id);
     var userLeaving = playersOnline.find((player) => player.socketId === socket.id);
-    playersOnline = playersOnline.filter(
-      (player: onlinePlayerProps) => player.socketId !== socket.id
-    );
+    playersOnline = playersOnline.filter((player: onlinePlayerProps) => player.socketId !== socket.id);
 
     if (userLeaving !== undefined) {
       if (RoomChannels[userLeaving.roomChannel].players.length !== 1) {
-        RoomChannels[userLeaving.roomChannel].players = RoomChannels[
-          userLeaving.roomChannel
-        ].players.filter((player: any) => player.socketID !== userLeaving?.socketId);
+        RoomChannels[userLeaving.roomChannel].players = RoomChannels[userLeaving.roomChannel].players.filter(
+          (player: any) => player.socketID !== userLeaving?.socketId
+        );
       } else {
         delete RoomChannels[userLeaving.roomChannel];
       }
@@ -267,7 +289,6 @@ io.on('connection', (socket: any) => {
 
 app.get('/info', (req: any, res: any) => {
   console.log('INFO RoomChannels on /info', RoomChannels);
-  console.log('INFO playersOnline on /info', playersOnline);
 });
 const checkisThereAWinner = (RoomChannelObject: PlayerProps[], socket: any) => {
   if (RoomChannelObject[0].myTurn === 'NO_MORE' && RoomChannelObject[1].myTurn === 'NO_MORE') {
@@ -284,10 +305,7 @@ const checkisThereAWinner = (RoomChannelObject: PlayerProps[], socket: any) => {
 const whosNearest21 = (players: PlayerProps[]) => {
   let playerOne = players[0];
   let playerTwo = players[1];
-  if (
-    typeof playerOne.cardsTotal != 'undefined' &&
-    typeof playerTwo.cardsTotal != 'undefined'
-  ) {
+  if (typeof playerOne.cardsTotal != 'undefined' && typeof playerTwo.cardsTotal != 'undefined') {
     if (playerOne.cardsTotal > 21 && playerTwo.cardsTotal > 21) {
       return { message: 'DRAW', players: [...[playerOne], ...[playerTwo]] };
     }
@@ -313,32 +331,6 @@ const whosNearest21 = (players: PlayerProps[]) => {
   } else return { message: 'ERROR', error: 'Players have no cards' };
 };
 
-const whosTurnIsHandler = (players: PlayerProps[], currentNickname: string) => {
-  players.forEach((player: any) => {
-    if (player.nickName === currentNickname) {
-      if (player.myTurn === 'YES' && player.dealer !== 'dealer') {
-        console.log(` ${player.nickName}[Guest] is hitting!`);
-      }
-      if (player.myTurn === 'NO_EXCEEDED' && player.dealer !== 'dealer') {
-        //the opponent
-        players.forEach((player) =>
-          player.nickName !== currentNickname ? (player.myTurn = 'YES') : null
-        );
-      }
-    }
-    // if (player.nickName === currentNickname) {
-    //   if (player.myTurn === 'YES' && player.dealer === 'dealer') {
-    //     player.myTurn = 'NO_MORE';
-    //   } else {
-    //     player.myTurn = 'NO';
-    //   }
-    // } else {
-    //   if (player.myTurn === 'NO' && player.dealer !== 'dealer') {
-    //     player.myTurn = 'NO_MORE';
-    //   } else player.myTurn = 'YES';
-    // }
-  });
-};
 server.listen(portNumber, () => {
   console.log('Server is running on ', portNumber);
 });
