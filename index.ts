@@ -1,15 +1,16 @@
-import {
-  onlinePlayerProps,
-  newTableProps,
-  PlayerProps,
-  CardObject,
-} from './cardManager/types/types';
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
+
+const {
+  onlinePlayerProps,
+  newTableProps,
+  PlayerProps,
+  CardObject,
+} = require('./cardManager/types/types');
 const {
   getAllCards,
   shuffleCards,
@@ -23,8 +24,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 const server = http.createServer(app);
 const cards = getAllCards;
-var playersOnline: onlinePlayerProps[] = [];
-var RoomChannels: newTableProps = {};
+var playersOnline: typeof onlinePlayerProps[] = [];
+var RoomChannels: typeof newTableProps = {};
 
 const io = new Server(server, {
   cors: {
@@ -130,12 +131,15 @@ io.on('connection', (socket: any) => {
         if (player.nickName === currentNickName) {
           console.log(
             `${currentNickName} is hitting and ${JSON.stringify(
-              player.cards?.find((card: CardObject) => card.cardID === 'hidden')
+              player.cards?.find((card: typeof CardObject) => card.cardID === 'hidden')
             )}`
           );
           //CHECK IF PLAYER HAS THE HIDDEN CARD
-          if (player.cards?.find((card: CardObject) => card.cardID === 'hidden') != undefined) {
-            player.cards?.forEach((item: CardObject) => {
+          if (
+            player.cards?.find((card: typeof CardObject) => card.cardID === 'hidden') !=
+            undefined
+          ) {
+            player.cards?.forEach((item: typeof CardObject) => {
               if (item.cardID === 'hidden') {
                 let card = RoomChannels[roomChannel].cardsOnDeck?.pop();
                 if (typeof card != 'undefined') {
@@ -153,7 +157,7 @@ io.on('connection', (socket: any) => {
           //ONLY THE HITTER IS CHECKED
           //for EACH player, compute the CardTOTAL here
           var cardTotal = 0;
-          player.cards?.forEach((card: CardObject) => {
+          player.cards?.forEach((card: typeof CardObject) => {
             cardTotal += card.cardValue;
           });
           player.cardsTotal = cardTotal;
@@ -162,7 +166,7 @@ io.on('connection', (socket: any) => {
             if (player.dealer != 'dealer') {
               if (player.myTurn === 'YES') {
                 player.myTurn = 'NO_EXCEEDED';
-                RoomChannels[roomChannel].players.forEach((theOtherPlayer) =>
+                RoomChannels[roomChannel].players.forEach((theOtherPlayer: any) =>
                   theOtherPlayer.nickName !== currentNickName
                     ? (theOtherPlayer.myTurn = 'YES')
                     : null
@@ -171,7 +175,7 @@ io.on('connection', (socket: any) => {
             } else if (player.dealer === 'dealer') {
               if (player.myTurn === 'YES') {
                 player.myTurn = 'NO_MORE';
-                RoomChannels[roomChannel].players.forEach((theOtherPlayer) =>
+                RoomChannels[roomChannel].players.forEach((theOtherPlayer: any) =>
                   theOtherPlayer.nickName !== currentNickName
                     ? (theOtherPlayer.myTurn = 'NO_MORE')
                     : null
@@ -188,20 +192,20 @@ io.on('connection', (socket: any) => {
         if (player.nickName === currentNickName) {
           if (player.dealer != 'dealer') {
             player.myTurn = 'NO_MORE';
-            RoomChannels[roomChannel].players.forEach((player: PlayerProps) =>
+            RoomChannels[roomChannel].players.forEach((player: typeof PlayerProps) =>
               player.nickName !== currentNickName ? (player.myTurn = 'YES') : null
             );
           } else {
             if (player.myTurn === 'YES') {
               player.myTurn = 'NO_MORE';
               RoomChannels[roomChannel].players.forEach(
-                (theOtherPlayer) => (theOtherPlayer.myTurn = 'NO_MORE')
+                (theOtherPlayer: any) => (theOtherPlayer.myTurn = 'NO_MORE')
               );
             }
           }
 
           var cardTotal = 0;
-          player.cards?.forEach((card: CardObject) => {
+          player.cards?.forEach((card: typeof CardObject) => {
             cardTotal += card.cardValue;
           });
           player.cardsTotal = cardTotal;
@@ -234,7 +238,7 @@ io.on('connection', (socket: any) => {
     console.log('User disconnected: ', socket.id);
     var userLeaving = playersOnline.find((player) => player.socketId === socket.id);
     playersOnline = playersOnline.filter(
-      (player: onlinePlayerProps) => player.socketId !== socket.id
+      (player: typeof onlinePlayerProps) => player.socketId !== socket.id
     );
 
     if (userLeaving !== undefined) {
@@ -260,7 +264,7 @@ app.get('/info', (req: any, res: any) => {
   console.log('INFO RoomChannels on /info', RoomChannels);
   console.log('INFO playersOnline on /info', playersOnline);
 });
-const checkisThereAWinner = (RoomChannelObject: PlayerProps[], socket: any) => {
+const checkisThereAWinner = (RoomChannelObject: typeof PlayerProps[], socket: any) => {
   if (RoomChannelObject[0].myTurn === 'NO_MORE' && RoomChannelObject[1].myTurn === 'NO_MORE') {
     setTimeout(() => {
       socket.broadcast.emit('GAME_FINISHED', {
@@ -272,7 +276,7 @@ const checkisThereAWinner = (RoomChannelObject: PlayerProps[], socket: any) => {
     }, 1500);
   }
 };
-const whosNearest21 = (players: PlayerProps[]) => {
+const whosNearest21 = (players: typeof PlayerProps[]) => {
   let playerOne = players[0];
   let playerTwo = players[1];
   if (
@@ -304,7 +308,7 @@ const whosNearest21 = (players: PlayerProps[]) => {
   } else return { message: 'ERROR', error: 'Players have no cards' };
 };
 
-const whosTurnIsHandler = (players: PlayerProps[], currentNickname: string) => {
+const whosTurnIsHandler = (players: typeof PlayerProps[], currentNickname: string) => {
   players.forEach((player: any) => {
     if (player.nickName === currentNickname) {
       if (player.myTurn === 'YES' && player.dealer !== 'dealer') {
