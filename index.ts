@@ -28,7 +28,7 @@ var RoomChannels: newTableProps = {};
 
 const io = new Server(server, {
   cors: {
-    origin: 'https://blackjackdanielback.herokuapp.com/',
+    origin: 'https://blackjackanca.herokuapp.com/',
     methods: ['GET', 'POST'],
   },
 });
