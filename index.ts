@@ -17,8 +17,8 @@ const server = http.createServer(app);
 const cards = getAllCards;
 var playersOnline: onlinePlayerProps[] = [];
 var RoomChannels: newTableProps = {};
-const localHost = 'http://localhost:3000';
-// const localHost = 'https://blackjackanca.herokuapp.com/';
+// const localHost = 'http://localhost:3000';
+const localHost = 'https://blackjackanca.herokuapp.com/';
 const io = new Server(server, {
   cors: {
     origin: localHost,
