@@ -21,11 +21,11 @@ var RoomChannels: newTableProps = {};
 const localHost = 'https://blackjackanca.herokuapp.com/';
 const io = new Server(server, {
   cors: {
-    origin: 'https://blackjackanca.herokuapp.com:3000',
+    origin: 'https://blackjackanca.herokuapp.com',
     methods: ['GET', 'POST'],
     allowedHeaders: [
       {
-        'Access-Control-Allow-Origin': 'https://blackjackanca.herokuapp.com:3000',
+        'Access-Control-Allow-Origin': 'https://blackjackanca.herokuapp.com',
         'Content-Type': 'application/json',
         'Access-Control-Allow-Credentials': true,
         'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
